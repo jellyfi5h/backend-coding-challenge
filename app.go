@@ -15,6 +15,5 @@ func main() {
 	if err != nil {
 		return //something goes wrong with creating the daemon process
 	}
-	//set handlers(entry points)
-	server.WebServer(nil) //start listen from host:port given
+	server.WebServer() //start listen from host:port given
 }

@@ -2,16 +2,42 @@ package server
 
 import (
 	"net/http"
-
 	"../settings"
 )
 
-//WebServer : listening from host:port given in conf file */
-func WebServer(route *http.ServeMux) error {
-	var values settings.Values
+/* response example:
+	{
+		lang_name: {
+			repos_count: 40
+			repositories: [
+				{
+					name: ...
+					url: ...
+					owner: ...
+					starred: int
+					forked: int
+					watched: int
+				},
+				...
+			]
+		},
+		...
+	}
+*/
 
-	values = settings.Restore()
-	//route.Handle("/", http.FileServer(s.Root))
+func entryPoints() *http.ServeMux {
+	route := http.NewServeMux()
+
+	route.HandleFunc("/languages", languagesHandler) // /languages?since={Daily | weekly | Monthly(default)}
+	route.HandleFunc("/repos", reposByLangHandler) // /repos/:language?since={..}&lang={name}
+	return route
+}
+
+//WebServer : listening from host:port given in conf file */
+func WebServer() error {
+
+	route := entryPoints()
+	values := settings.Restore()
 	addr := values.Host + ":" + values.Port
-	return http.ListenAndServe(addr, nil)
+	return http.ListenAndServe(addr, route)
 }
