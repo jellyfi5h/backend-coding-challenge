@@ -1,40 +1,39 @@
 package server
 
 import (
-	"fmt"
-	"time"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
 )
 
 //set timeout of 15 sec in case the remote server is unresponsive
 var httpClient = &http.Client{Timeout: 15 * time.Second}
 
 type Repository struct {
-	Name 		  string `json:"name"`
-	Developer 	  string `json:"developer_login"`
-	RepoURL       string `json:"repo_url"`
-	Stars         int    `json:"stars"`
-	Watchers      int    `json:"watchers"`
-	Forks         int    `json:"forks"`
+	Name      string `json:"name"`
+	Developer string `json:"developer_login"`
+	RepoURL   string `json:"repo_url"`
+	Stars     int    `json:"stars"`
+	Watchers  int    `json:"watchers"`
+	Forks     int    `json:"forks"`
 }
 
 type Language struct {
-	CountRepos 	 int           `json:"repos_count"`
+	CountRepos   int           `json:"repos_count"`
 	Repositories []*Repository `json:"repositories"`
 }
 
-
 //get 100 trending repos of all languages
 func trendingURL(since time.Time) string {
-	return fmt.Sprintf("https://api.github.com/search/repositories?q=" +
-					"created:>=%s&sort=stars&order=desc&per_page=100", since.Format("2006-01-02"))
+	return fmt.Sprintf("https://api.github.com/search/repositories?q="+
+		"created:>=%s&sort=stars&order=desc&per_page=100", since.Format("2006-01-02"))
 }
 
 //get 100 trending repos by specific language
 func trendingByLangURL(since time.Time, lang string) string {
-	return fmt.Sprintf("https://api.github.com/search/repositories?q=" +
-					"created:>=%s&language=%s&sort=stars&order=desc&per_page=100", since.Format("2006-01-02"), lang)
+	return fmt.Sprintf("https://api.github.com/search/repositories?q="+
+		"created:>=%s&language=%s&sort=stars&order=desc&per_page=100", since.Format("2006-01-02"), lang)
 }
 
 //get trending repositories by languages
@@ -95,12 +94,12 @@ func reposByLang(items []map[string]interface{}) map[string]*Language {
 func (lang *Language) append(data map[string]interface{}) {
 	lang.CountRepos++
 	login, _ := unmarshalItem(data["owner"].(map[string]interface{}), "login")
-	lang.Repositories = append(lang.Repositories, &Repository {
-		Name: data["name"].(string),
+	lang.Repositories = append(lang.Repositories, &Repository{
+		Name:      data["name"].(string),
 		Developer: login.(string),
-		RepoURL: data["html_url"].(string),
-		Stars: data["stargazers_count"].(int),
-		Watchers: data["watchers_count"].(int),
-		Forks: data["forks_count"].(int),
+		RepoURL:   data["html_url"].(string),
+		Stars:     data["stargazers_count"].(int),
+		Watchers:  data["watchers_count"].(int),
+		Forks:     data["forks_count"].(int),
 	})
 }
