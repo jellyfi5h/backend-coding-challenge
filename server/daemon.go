@@ -8,6 +8,7 @@ import (
 
 func forkProcess() error {
 	cmd := exec.Command(os.Args[0])
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	return cmd.Start()
 }
 
@@ -55,7 +56,8 @@ func setDaemonSettings() {
 
 	devNull = os.NewFile(0, os.DevNull)
 	defer devNull.Close()
-	os.Stdin, os.Stdout, os.Stderr = devNull, devNull, devNull
+	//os.Stdin, os.Stdout, os.Stderr = devNull, devNull, devNull
+
 	syscall.Umask(0)   // set permissions
 	syscall.Setsid()   //retrieve any controlling terminal of the daemon
 	syscall.Chdir("/") //move to root directory

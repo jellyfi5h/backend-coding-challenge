@@ -18,12 +18,13 @@ func AllowedMethods(req string, methods ...string) int {
 }
 
 //GetQueryValues return the values
-func GetQueryValues(link string, keywords ...string) (values map[string]string, err error) {
-	u, err := url.Parse(link)
+func GetQueryValues(link *url.URL, keywords ...string) (values map[string]string, err error) {
+	//u, err := url.Parse(link)
 	if err != nil {
 		return nil, err
 	}
-	query := u.Query()
+	query := link.Query()
+	values = make(map[string]string)
 	for _, key := range keywords {
 		values[key] = query.Get(key)
 	}

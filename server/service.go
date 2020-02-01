@@ -37,7 +37,7 @@ func languagesHandler(w http.ResponseWriter, r *http.Request) {
 	status := web.AllowedMethods(r.Method, "GET")
 	title := "error"
 	if status == 200 {
-		query, err := web.GetQueryValues(r.URL.Path, "since")
+		query, err := web.GetQueryValues(r.URL, "since")
 		if err != nil {
 			resp = []byte(err.Error())
 			status = 400
