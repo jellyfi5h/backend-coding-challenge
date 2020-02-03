@@ -19,7 +19,6 @@ func AllowedMethods(req string, methods ...string) int {
 
 //GetQueryValues return the values
 func GetQueryValues(link *url.URL, keywords ...string) (values map[string]string, err error) {
-	//u, err := url.Parse(link)
 	if err != nil {
 		return nil, err
 	}

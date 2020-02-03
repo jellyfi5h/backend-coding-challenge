@@ -10,36 +10,36 @@ import (
 //set timeout of 15 sec in case the remote server is unresponsive
 var httpClient = &http.Client{Timeout: 15 * time.Second}
 
+//Repository fetched fields
 type Repository struct {
 	Name      string `json:"name"`
 	Developer string `json:"developer_login"`
 	RepoURL   string `json:"repo_url"`
 	Stars     int    `json:"stars"`
-	Watchers  int    `json:"watchers"`
 	Forks     int    `json:"forks"`
 }
 
 type Language struct {
+	Name         string        `json:"language"`
 	CountRepos   int           `json:"repos_count"`
 	Repositories []*Repository `json:"repositories"`
 }
 
-//get 100 trending repos of all languages
-func trendingURL(dtrange time.Time) string {
+/*
+	get list of 100 trending repositories
+		depending on number of stars && forks
+*/
+func trendingURL(created time.Time) string {
 	return fmt.Sprintf("https://api.github.com/search/repositories?q="+
-		"created:>=%s&sort=stars&order=desc&per_page=100", dtrange.Format("2006-01-02"))
+		"created:>=%s&sort=stars,forks&order=desc&per_page=100", created.Format("2006-01-02"))
 }
 
-//get 100 trending repos by specific language
-func trendingByLangURL(dtrange time.Time, lang string) string {
-	return fmt.Sprintf("https://api.github.com/search/repositories?q="+
-		"created:>=%s&language=%s&sort=stars&order=desc&per_page=100", dtrange.Format("2006-01-02"), lang)
-}
-
-//get trending repositories by languages
-func getLanguages(url string) (languages map[string]*Language, err error) {
+//TrendingLanguages returns a list of the trending languages used in github since(daily|weekly|monthly)
+func TrendingLanguages(since string) (languages []*Language, err error) {
 	var repos []interface{}
 
+	createdTime := createdSince(since)
+	url := trendingURL(createdTime)
 	repos, err = trendingRepos(url)
 	if err != nil {
 		return
@@ -48,18 +48,7 @@ func getLanguages(url string) (languages map[string]*Language, err error) {
 	return
 }
 
-func unmarshalItem(data map[string]interface{}, field string) (item interface{}, err error) {
-	var dump []byte
-
-	dump, err = json.Marshal(data[field])
-	if err != nil {
-		return
-	}
-	err = json.Unmarshal(dump, &item)
-	return
-}
-
-//get the trending repositories of the url(query string )
+//get the repositories from response of the request
 func trendingRepos(url string) (repos []interface{}, err error) {
 	var data map[string]interface{}
 	var resp *http.Response
@@ -81,35 +70,66 @@ func trendingRepos(url string) (repos []interface{}, err error) {
 	return
 }
 
-/* strore items given from repositories */
-func reposByLang(items []interface{}) map[string]*Language {
-	languages := make(map[string]*Language)
-	for _, face := range items {
-		repo := face.(map[string]interface{})
-		if repo["language"] != nil {
-			name := repo["language"].(string)
-			languages[name] = appendLang(languages[name], repo)
+// filter the repositories taken and divide them by languages
+func reposByLang(repositories []interface{}) []*Language {
+	languages := []*Language{}
+	for _, repo := range repositories {
+		items := repo.(map[string]interface{})
+		if items["language"] != nil {
+			languages = appendLanguage(languages, items)
 		}
 	}
-	fmt.Println(languages)
 	return languages
 }
 
-func appendLang(lang *Language, data map[string]interface{}) (newLang *Language) {
-	if lang == nil {
-		lang = &Language{}
+func appendLanguage(languages []*Language, repo map[string]interface{}) []*Language {
+	name := repo["language"].(string)
+	index, _ := FindLanguage(languages, name)
+	if index != -1 {
+		languages[index].addRepo(repo)
+		return languages
 	}
+	lang := &Language{Name: name}
+	lang.addRepo(repo)
+	languages = append(languages, lang)
+	return languages
+}
+
+//counter of any repository added to the list
+func (lang *Language) addRepo(repo map[string]interface{}) {
+	lang.CountRepos++
+	lang.Repositories = append(lang.Repositories, newRepository(repo))
+}
+
+//FindLanguage by its name
+func FindLanguage(languages []*Language, name string) (int, *Language) {
+	for index, lang := range languages {
+		if name == lang.Name {
+			return index, lang
+		}
+	}
+	return -1, nil
+}
+
+//fetch repository fields
+func newRepository(data map[string]interface{}) *Repository {
 	login, _ := unmarshalItem(data["owner"].(map[string]interface{}), "login")
-	newLang = &Language{
-		CountRepos: lang.CountRepos + 1,
-		Repositories: append(lang.Repositories, &Repository{
-			Name:      data["name"].(string),
-			Developer: login.(string),
-			RepoURL:   data["html_url"].(string),
-			Stars:     int(data["stargazers_count"].(float64)),
-			Watchers:  int(data["watchers_count"].(float64)),
-			Forks:     int(data["forks_count"].(float64)),
-		}),
+	return &Repository{
+		Name:      data["name"].(string),
+		Developer: login.(string),
+		RepoURL:   data["html_url"].(string),
+		Stars:     int(data["stargazers_count"].(float64)),
+		Forks:     int(data["forks_count"].(float64)),
 	}
+}
+
+func unmarshalItem(data map[string]interface{}, field string) (item interface{}, err error) {
+	var dump []byte
+
+	dump, err = json.Marshal(data[field])
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(dump, &item)
 	return
 }

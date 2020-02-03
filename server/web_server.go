@@ -6,31 +6,11 @@ import (
 	"../settings"
 )
 
-/* response example:
-{
-	lang_name: {
-		repos_count: 40
-		repositories: [
-			{
-				name: ...
-				url: ...
-				owner: ...
-				starred: int
-				forked: int
-				watched: int
-			},
-			...
-		]
-	},
-	...
-}
-*/
-
 func entryPoints() *http.ServeMux {
 	route := http.NewServeMux()
 
 	route.HandleFunc("/languages", languagesHandler) // /languages?since={Daily | weekly | Monthly(default)}
-	route.HandleFunc("/repos", reposByLangHandler)   // /repos/:language?since={..}&lang={name}
+	route.HandleFunc("/frameworks", frameworksHandler)
 	return route
 }
 

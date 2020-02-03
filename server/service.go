@@ -19,7 +19,7 @@ func createdSince(since string) time.Time {
 		created = now.AddDate(0, 0, -7)
 	case "monthly":
 		created = now.AddDate(0, -1, 0)
-	default:
+	default: //monthly
 		created = now.AddDate(0, -1, 0)
 	}
 	return created
@@ -39,17 +39,17 @@ func languagesHandler(w http.ResponseWriter, r *http.Request) {
 	if status == 200 {
 		query, err := web.GetQueryValues(r.URL, "since")
 		if err != nil {
-			resp = []byte(err.Error())
+			resp = []byte(err.Error()) //syntax error in request
 			status = 400
 		} else {
-			createdTime := createdSince(query["since"])
-			url := trendingURL(createdTime)
-			languages, err := getLanguages(url)
+			languages, err := TrendingLanguages(query["since"])
 			if err != nil {
 				resp = []byte(err.Error())
 			} else {
 				title = "languages"
 				resp, _ = json.Marshal(languages)
+				//clear frameworks
+				go Popularframeworks(languages) // run in separate goroutine(thread) cause its take too much time due its complicated process
 			}
 		}
 	}
@@ -58,7 +58,25 @@ func languagesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-// /repositories/:language?since={...}&lang
-func reposByLangHandler(w http.ResponseWriter, r *http.Request) {
+// /frameworks
+func frameworksHandler(w http.ResponseWriter, r *http.Request) {
+	var resp []byte
 
+	status := web.AllowedMethods(r.Method, "GET")
+	title := "error"
+	if status == 200 {
+		if G_frameworks == nil { //framework list is empty will get the trending repos first
+			languages, err := TrendingLanguages("monthly")
+			Popularframeworks(languages)
+			if err != nil {
+				resp = []byte(err.Error())
+			}
+		} else {
+			title = "frameworks"
+			resp, _ = json.Marshal(G_frameworks)
+		}
+	}
+	setHeader(w, status)
+	data := web.JsonResponse(status, title, resp)
+	w.Write(data)
 }
