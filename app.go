@@ -9,7 +9,7 @@ import (
 
 func main() {
 	route := entryPoints()
-	err := http.ListenAndServe("localhost:8100", route)
+	err := http.ListenAndServe(":8100", route)
 	if err != nil {
 		fmt.Println(err)
 	}
