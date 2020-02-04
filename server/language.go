@@ -7,8 +7,10 @@ import (
 	"time"
 )
 
-//set timeout of 15 sec in case the remote server is unresponsive
-var httpClient = &http.Client{Timeout: 15 * time.Second}
+//set timeout of 40 sec in case the remote server is unresponsive
+var httpClient = &http.Client{Timeout: 40 * time.Second}
+
+var G_languages []*Language
 
 //Repository fetched fields
 type Repository struct {
@@ -34,6 +36,23 @@ func trendingURL(created time.Time) string {
 		"created:>=%s&sort=stars,forks&order=desc&per_page=100", created.Format("2006-01-02"))
 }
 
+func createdSince(since string) time.Time {
+	var created time.Time
+
+	now := time.Now()
+	switch since {
+	case "daily":
+		created = now.AddDate(0, 0, -1)
+	case "weekly":
+		created = now.AddDate(0, 0, -7)
+	case "monthly":
+		created = now.AddDate(0, -1, 0)
+	default: //monthly
+		created = now.AddDate(0, -1, 0)
+	}
+	return created
+}
+
 //TrendingLanguages returns a list of the trending languages used in github since(daily|weekly|monthly)
 func TrendingLanguages(since string) (languages []*Language, err error) {
 	var repos []interface{}
@@ -48,7 +67,7 @@ func TrendingLanguages(since string) (languages []*Language, err error) {
 	return
 }
 
-//get the repositories from response of the request
+//get the repositories from response of the request(url) passed
 func trendingRepos(url string) (repos []interface{}, err error) {
 	var data map[string]interface{}
 	var resp *http.Response
@@ -70,7 +89,7 @@ func trendingRepos(url string) (repos []interface{}, err error) {
 	return
 }
 
-// filter the repositories taken and divide them by languages
+// filter the repositories taken and classify them by languages
 func reposByLang(repositories []interface{}) []*Language {
 	languages := []*Language{}
 	for _, repo := range repositories {

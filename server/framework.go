@@ -3,15 +3,19 @@ package server
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 )
 
 /*
 	since github api does not provides frameworks used in repositories
-	i will search in every repository in their package file (accord the language) if exist and only in root (not in subfolders)
-	for specific frameworks (according to language) using a simple regex expression.
-	and get's its popularity by the number of repos using it
+	get framework process:
+			- create a map and define for each language its package filename and
+				the list of its few popular frameworks
+			- get content of package file according to the language used in the repository
+			- decode the content given from response data
+			- search in the content for frameworks using simple regex expr
 */
 
 var G_frameworks []*Framework
@@ -28,13 +32,13 @@ type Framework struct {
 	Repositories []*Repository `json:"repositories"`
 }
 
-//list of frameworks in each language and the package file where to find them
 var packages = map[string]Package{
-	"Python":     Package{fileName: "requirements.txt", frameworks: []string{"Django", "Flask", "Sanic", "Tornado"}},
-	"JavaScript": Package{fileName: "package.json", frameworks: []string{"Vue", "React", "Express", "Angular", "Ember"}},
-	"TypeScript": Package{fileName: "package.json", frameworks: []string{"React", "Angular", "Vue", "Nest", "Loopback", "Stix"}},
-	"PHP":        Package{fileName: "composer.json", frameworks: []string{"Laravel", "Symfony", "Zend", "Phalcon"}},
+	"Python":     Package{fileName: "requirements.txt", frameworks: []string{"Django", "Flask", "Sanic"}},
+	"JavaScript": Package{fileName: "package.json", frameworks: []string{"Vue", "React", "Express", "Angular"}},
+	"TypeScript": Package{fileName: "package.json", frameworks: []string{"React", "Angular", "Vue", "Nest"}},
+	"PHP":        Package{fileName: "composer.json", frameworks: []string{"Laravel", "Symfony", "Zend"}},
 	"Ruby":       Package{fileName: "Gemfile", frameworks: []string{"Rails", "Sinatra"}},
+	"Java":       Package{fileName: "pom.xml", frameworks: []string{"Spring", "Struts", "Hibernate"}},
 }
 
 // package file contents according to language and repo name
@@ -42,22 +46,30 @@ func getContentURL(login string, repo string, fileName string) string {
 	return fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s", login, repo, fileName)
 }
 
-//get popular frameworks from the list of the trending 100 repositories
-func Popularframeworks(languages []*Language) {
+//get popular frameworks
+func Popularframeworks(languages []*Language) error {
 	for _, lang := range languages {
 		for _, repo := range lang.Repositories {
-			if _, exists := packages[lang.Name]; exists { // if this language is
-				arr := repoFrameworks(lang.Name, repo)
-				storeFrameworks(arr, lang.Name)
+			if _, exists := packages[lang.Name]; exists {
+				arr, err := repoFrameworks(lang.Name, repo)
+				if err != nil {
+					return err
+				}
+				storeFrameworks(arr, lang.Name, repo)
 			}
 		}
 	}
+	return nil
 }
 
-//search in the content of the package file of the given repository for frameworks using regex exp
-func repoFrameworks(lang string, repo *Repository) []string {
-	frameworks := []string{}
-	content, _ := packageContent(lang, repo.Developer, repo.Name)
+//get frameworks from repository package file using regex
+func repoFrameworks(lang string, repo *Repository) (frameworks []string, err error) {
+	var content []byte
+
+	content, err = packageContent(lang, repo.Developer, repo.Name)
+	if err != nil {
+		return
+	}
 	for _, name := range packages[lang].frameworks {
 		pattern := `(?si)\b((` + name + `))\b`
 		matched, _ := regexp.MatchString(pattern, string(content))
@@ -65,10 +77,10 @@ func repoFrameworks(lang string, repo *Repository) []string {
 			frameworks = append(frameworks, name)
 		}
 	}
-	return frameworks
+	return
 }
 
-//get the content of the package file by the language given in a specific repository
+//get the content of the package file and decode its value
 func packageContent(lang string, login string, repo string) (content []byte, err error) {
 	var data map[string]interface{}
 
@@ -81,24 +93,32 @@ func packageContent(lang string, login string, repo string) (content []byte, err
 	if err != nil {
 		return
 	}
-	if data["content"] != nil { // file found in root dir
+	if resp.StatusCode == 403 && data["message"] != nil {
+		//error message from response
+		err = errors.New(data["message"].(string))
+		return
+	}
+	if data["content"] != nil {
+		//decode content by base64
 		encoded := data["content"].(string)
 		content, err = base64.StdEncoding.DecodeString(encoded) //decode content from base64 to string
 	}
 	return
 }
 
-func storeFrameworks(arr []string, langName string) {
+func storeFrameworks(arr []string, langName string, repo *Repository) {
 	for _, name := range arr {
-		id, _ := FindFramework(G_frameworks, name)
-		if id != -1 {
-			G_frameworks[id].CountRepos++
+		_, frameworkPtr := FindFramework(G_frameworks, name)
+		if frameworkPtr != nil {
+			frameworkPtr.CountRepos++
+			frameworkPtr.Repositories = append(frameworkPtr.Repositories, repo)
 			continue
 		}
 		G_frameworks = append(G_frameworks, &Framework{
-			Name:       name,
-			Lang:       langName,
-			CountRepos: 1,
+			Name:         name,
+			Lang:         langName,
+			CountRepos:   1,
+			Repositories: []*Repository{repo},
 		})
 	}
 }
