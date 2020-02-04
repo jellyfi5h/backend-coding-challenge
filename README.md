@@ -9,11 +9,11 @@
     - Framework popularity over the 100 repositories
 
 ## Lunch the app
-1- Docker is required*
-2- git clone the current repository 
-3- build docker image of API  ``` docker build -t trendingapp . ```
-4- run docker container  ``` docker run -p 8000:8100 -d trendingapp ```
-5- now you can access the API in http://localhost:8000
+1. Docker is required <span style="color:red">*</span>
+2. git clone the current repository 
+3. build docker image of API  ` docker build -t trendingapp . `
+4. run docker container  ` docker run -p 8000:8100 -d trendingapp `
+5. now you can access the API in http://localhost:8000
 
 ## Entry Points
 | Entry point | description|
