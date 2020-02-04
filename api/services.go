@@ -12,7 +12,7 @@ func HelpHandler(w http.ResponseWriter, r *http.Request) {
 		fields: make(map[string]interface{}),
 	}
 	s.fields["/languages"] = "GET the languages used in the 100 trending repositories with an optional query string since={daily,weekly,montly(default)}"
-	s.fields["/frameworks"] = "GET popular frameworks used in the trending github repositories -> maximum of 60 repo (rate limit of github api is 60 request per hour)"
+	s.fields["/frameworks"] = "GET popular frameworks used in the trending github repositories with maximum of 60 repo (rate limit of github api is 60 request per hour)"
 	s.exit(w)
 }
 
